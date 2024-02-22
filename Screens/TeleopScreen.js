@@ -7,7 +7,7 @@ import ROSLIB from 'roslib';
 
 export default function TeleopScreen({route}){
     const windowWidth = Dimensions.get('window').width;
-    const {rosConnection} = route.params?.rosConnection;
+    const {rosConnection} = route.params;
     const data = route.params?.data || '';
     
     var cmdVel = new ROSLIB.Topic({

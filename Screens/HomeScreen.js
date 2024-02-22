@@ -1,24 +1,25 @@
   import {StyleSheet, View, ActivityIndicator, ScrollView, 
     StatusBar, Alert, Pressable, Text, Image, ImageBackground, 
     Button, Modal, FlatList, TextInput, RefreshControl, Switch, Dimensions, TouchableOpacity} from 'react-native'
-  import {useEffect, useState, React, useLayoutEffect, route} from 'react'
-  //import { StreamCall, StreamVideo, StreamVideoClient, User } from '@stream-io/video-react-native-sdk';
-  import Video from 'react-native-video'
+  import {useEffect, useState, React, useLayoutEffect, route, useCallback} from 'react'
+  import {debounce} from 'lodash';
   import axios from 'axios';
   import { SafeAreaView } from 'react-native';
   import ROSLIB from 'roslib';
   import {WebView} from 'react-native-webview'
   import { StackRouter } from '@react-navigation/native';
   import { useRoute } from '@react-navigation/native';  
+  import { storeData, getData } from '../Utils/asyncStorage';
     
-    const apiKey = 'a57e3487d4af4c39a9505707242501';
-    const apiUrl = 'https://api.weatherapi.com/v1/forecast.json';
-    const searchUrl = 'https://api.weatherapi.com/v1/search.json';
+  const apiKey = 'a57e3487d4af4c39a9505707242501';
+  const apiUrl = 'https://api.weatherapi.com/v1/forecast.json';
+  const searchUrl = 'https://api.weatherapi.com/v1/search.json';
     
 export default function HomeScreen ({navigation}){
       const [isLoading, setLoading] = useState(true);
       const [weatherData, setWeatherData] = useState({});
-      const [locations, setLocations] = useState("oshawa");
+      const [locations, setLocations] = useState([]);
+      const [Search, setSearch] = useState(false);
       const [robotStatus, setrobotStatus] = useState("");
       const [statusColor, setstatusColor] = useState('red');
       const currentTime = new Date();
@@ -28,6 +29,8 @@ export default function HomeScreen ({navigation}){
       const [connection, setConnection] = useState(false);
       const [rosConnection, setRosConnection] = useState(null);
       const route = useRoute();
+      const [placeholderText, setPlaceholderText] = useState('Search a City');
+      const [locationSelected, setlocationSelected] = useState(false);
       
       const data = route.params?.data || '';
     
@@ -86,40 +89,46 @@ export default function HomeScreen ({navigation}){
           closeRosConnection();
         };
       }, []); 
-  
-    //};
-      useEffect(() => {
-        const imageTopic = new ROSLIB.Topic({
-          ros: ros,
-          name: 'usb_cam/image_raw/compressed',
-          messageType: 'sensor_msgs/CompressedImage',
-        });
-  
-        imageTopic.subscribe((message) => {
-          setImageData(message.data);
-        });
-      }, [ros]);
+      
+      const handleLocation = (loc) => {
+        setlocationSelected(true);
+        setLocations([]);
+        setPlaceholderText("Search a City");
+        console.log(loc.name);
+        storeData('city', loc.name);
+        getHourlyWeather( apiKey, 1);
+      }
+
   
   
       //refreshControl={<RefreshControl refreshing={refreshing} onRefresh={Rosconnection}
       const handleSearch = async (loc)=>{
-        try {
-          const response = await axios.get(`${searchUrl}?key=${apiKey}&q=${loc}`);
-          const city = await response.data;
-          setLocations(city);
-          //console.log(weatherData);
-        } catch (error) {
-          console.error('Error fetching location data:', error);
-          throw error;
-        } finally{
-          setLoading(false);
+        setSearch(true);
+        if (loc.length > 2){
+          try {
+            const response = await axios.get(`${searchUrl}?key=${apiKey}&q=${loc}`);
+            const city = await response.data;
+            setLocations(city);
+            console.log(city);
+            //console.log(city[1].name + city[1].country);
+          } catch (error) {
+            console.error('Error fetching location data:', error);
+            throw error;
+          } finally{
+            setLoading(false);
+          }
+          
         }
         
       };
+      const handleTextDebounce = useCallback(debounce(handleSearch, 200), []);
     
-      const getHourlyWeather = async (location, apiKey, days= 1) => {
+      const getHourlyWeather = async ( apiKey, days= 1) => {
+        let myCity = await getData('city');
+        let cityName = 'oshawa';
+        if (myCity) cityName = myCity;
         try {
-          const response = await axios.get(`${apiUrl}?key=${apiKey}&q=${location}&days=${days}&aqi=no&alerts=no`);
+          const response = await axios.get(`${apiUrl}?key=${apiKey}&q=${cityName}&days=${days}&aqi=no&alerts=no`);
           console.log("got data successfully!")
           const Data = await response.data;
           setWeatherData(Data);
@@ -131,8 +140,8 @@ export default function HomeScreen ({navigation}){
           setLoading(false);
         }
       };
-      useLayoutEffect(()=>{
-        getHourlyWeather(locations, apiKey, 1);
+      useEffect(()=>{
+        getHourlyWeather(apiKey, 1);
         //Rosconnection();
       }, []);
       
@@ -146,7 +155,7 @@ export default function HomeScreen ({navigation}){
             hour12: true,
           });
           
-      //const handleTextDebounce = useCallback(debounce(handleSearch, 1200), []);
+      
           return (
             <View key={hourData.time_epoch}  style={styles.forecastItems}>
               <Text style={{color: 'white', fontWeight: 'bold'}}>{time}</Text>
@@ -176,11 +185,37 @@ export default function HomeScreen ({navigation}){
             </View>
             <View style={[styles.searchBox, {marginTop: 10}]}>
               <TextInput 
-                //onChangeText={handleTextDebounce} 
-                placeholder="Search city" 
+                onChangeText={handleTextDebounce} 
+                placeholder={placeholderText} 
+                value={locations.name}
                 placeholderTextColor={'lightgray'} 
                 style={styles.searchBar}
               />
+            </View>
+            <View>
+              { 
+                locations.length >0 && Search ?(
+                  <View style={{  position: 'absolute', flex: 1, alignSelf: 'center',  width: '95%', backgroundColor: 'rgba(200,200,200, 0.85)', marginTop: 4, borderRadius: 16, zIndex: 1}}> 
+                    {
+                      locations.map((loc, index) => {
+                        let showBorder = index + 1 != locations.length;
+                        return (
+                          <TouchableOpacity
+                          key ={index}
+                          onPress={()=>handleLocation(loc)}
+                          style={{flexDirection: 'row', alignItems: 'center', paddingRight: 4, paddingLeft: 4, marginBottom: 1, borderBottomColor: 'grey', borderBottomWidth: showBorder? 2: 0}}>
+                            <Text style={{color: 'black', fontSize: 25, marginLeft: 2}}> {loc?.name}, {loc?.country} </Text>
+
+                          </TouchableOpacity>
+                        )
+                      })
+                    }
+                  
+                  </View>
+                ):null
+
+              }
+            
             </View>
             
             
@@ -188,7 +223,7 @@ export default function HomeScreen ({navigation}){
               <Text>Loading...</Text>
                 ) : (
               <View style={{alignContent: 'center', alignItems: 'center', marginTop: 10}}>
-                <Text style={{fontSize: 30, fontWeight: 'bold', color: 'white', marginRight: 5, textTransform: 'uppercase'}}> {locations}, {weatherData?.location?.country}</Text>
+                <Text style={{fontSize: 30, fontWeight: 'bold', color: 'white', marginRight: 5, textTransform: 'uppercase'}}> {weatherData?.location?.name}, {weatherData?.location?.country}</Text>
                 <Image source={{uri: 'https:'+weatherData?.current?.condition?.icon}}
                       style={styles.currentPic}/>
                 <Text style={{fontSize: 50, fontWeight: 'bold', color: 'white', marginRight: 5}}> {weatherData?.current?.temp_c}°C </Text>
@@ -220,10 +255,7 @@ export default function HomeScreen ({navigation}){
                   onPress={() => navigation.navigate('Login')}> 
                   <Text style={{color: 'white', textAlign: 'center', fontWeight:'bold', fontSize: 16, marginTop: 2}}> LOGOUT</Text>
                 </TouchableOpacity>
-                
-                <View style={styles.container}>
-                  <Text style={styles.title}>{data}</Text>
-                </View>        
+                     
               
         </ScrollView>
       );
