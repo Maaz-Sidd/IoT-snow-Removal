@@ -10,11 +10,14 @@
   import { StackRouter } from '@react-navigation/native';
   import { useRoute } from '@react-navigation/native';  
   import { storeData, getData } from '../Utils/asyncStorage';
+
     
-  const apiKey = 'a57e3487d4af4c39a9505707242501';
+  const apiKey = process.env.EXPO_PUBLIC_WEATHER_API_KEY;
   const apiUrl = 'https://api.weatherapi.com/v1/forecast.json';
   const searchUrl = 'https://api.weatherapi.com/v1/search.json';
-    
+  
+
+
 export default function HomeScreen ({navigation}){
       const [isLoading, setLoading] = useState(true);
       const [weatherData, setWeatherData] = useState({});
@@ -106,10 +109,10 @@ export default function HomeScreen ({navigation}){
         setSearch(true);
         if (loc.length > 2){
           try {
-            const response = await axios.get(`${searchUrl}?key=${apiKey}&q=${loc}`);
+            const response = await axios.get(`${searchUrl}?key=${process.env.EXPO_PUBLIC_WEATHER_API_KEY}&q=${loc}`);
             const city = await response.data;
             setLocations(city);
-            console.log(city);
+          
             //console.log(city[1].name + city[1].country);
           } catch (error) {
             console.error('Error fetching location data:', error);
@@ -128,7 +131,7 @@ export default function HomeScreen ({navigation}){
         let cityName = 'oshawa';
         if (myCity) cityName = myCity;
         try {
-          const response = await axios.get(`${apiUrl}?key=${apiKey}&q=${cityName}&days=${days}&aqi=no&alerts=no`);
+          const response = await axios.get(`${apiUrl}?key=${process.env.EXPO_PUBLIC_WEATHER_API_KEY}&q=${cityName}&days=${days}&aqi=no&alerts=no`);
           console.log("got data successfully!")
           const Data = await response.data;
           setWeatherData(Data);
@@ -195,7 +198,7 @@ export default function HomeScreen ({navigation}){
             <View>
               { 
                 locations.length >0 && Search ?(
-                  <View style={{  position: 'absolute', flex: 1, alignSelf: 'center',  width: '95%', backgroundColor: 'rgba(200,200,200, 0.85)', marginTop: 4, borderRadius: 16, zIndex: 1}}> 
+                  <View style={{  position: 'absolute', flex: 1, alignSelf: 'center',  width: '95%', backgroundColor: 'rgba(51,68,71,0.90)', marginTop: 4, borderRadius: 16, zIndex: 1}}> 
                     {
                       locations.map((loc, index) => {
                         let showBorder = index + 1 != locations.length;
@@ -203,8 +206,8 @@ export default function HomeScreen ({navigation}){
                           <TouchableOpacity
                           key ={index}
                           onPress={()=>handleLocation(loc)}
-                          style={{flexDirection: 'row', alignItems: 'center', paddingRight: 4, paddingLeft: 4, marginBottom: 1, borderBottomColor: 'grey', borderBottomWidth: showBorder? 2: 0}}>
-                            <Text style={{color: 'black', fontSize: 25, marginLeft: 2}}> {loc?.name}, {loc?.country} </Text>
+                          style={{flexDirection: 'row', alignItems: 'center', paddingRight: 4, paddingLeft: 4, marginBottom: 1, borderBottomColor: 'white', borderBottomWidth: showBorder? 1: 0}}>
+                            <Text style={{color: 'white', fontSize: 22, marginLeft: 2}}> {loc?.name}, {loc?.country} </Text>
 
                           </TouchableOpacity>
                         )
@@ -244,7 +247,7 @@ export default function HomeScreen ({navigation}){
                   <TouchableOpacity disabled={connection} style={{backgroundColor: 'rgba(229,155,32,0.75)',  
                   borderColor: 'rgba(255,255,255,0.5)', borderRadius: 16, borderWidth: 2, width: 200, height: 40, alignItems: 'center'}}
                   onPress={()=> navigation.navigate("TeleopScreen", {rosConnection, data})}>
-                    <Text style={{color: 'white', textAlign: 'center', fontWeight:'bold', fontSize: 16, marginTop: 2, paddingTop: 6}}>Teleoperation</Text>
+                    <Text style={{color: 'white', textAlign: 'center', fontWeight:'bold', fontSize: 16, paddingTop: 6}}>Teleoperation</Text>
                   </TouchableOpacity>
                   <Text style={{color: 'white', textAlign: 'center', fontWeight:'bold', fontSize: 16, marginTop: 2}}> Automatic Mode: </Text>
                   <Switch/>

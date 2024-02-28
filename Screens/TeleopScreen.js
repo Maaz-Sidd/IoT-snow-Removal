@@ -12,7 +12,7 @@ export default function TeleopScreen({route}){
     
     var cmdVel = new ROSLIB.Topic({
         ros : rosConnection,
-        name : '/cmd_vel',
+        name : 'teleop/cmd_vel',
         messageType : 'geometry_msgs/Twist'
       });
     
