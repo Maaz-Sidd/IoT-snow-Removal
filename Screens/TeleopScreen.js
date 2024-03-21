@@ -10,13 +10,42 @@ export default function TeleopScreen({route}){
     const {rosConnection} = route.params;
     const data = route.params?.data || '';
     
+
+    var talker = new ROSLIB.Topic({
+      ros : rosConnection,
+      name : '/chatter',
+      messageType : 'std_msgs/String'
+    });
+
+
+
+
     var cmdVel = new ROSLIB.Topic({
         ros : rosConnection,
         name : 'teleop/cmd_vel',
         messageType : 'geometry_msgs/Twist'
       });
-    
-    
+
+    const sendMessage = (message) => {
+      const rosMessage = new ROSLIB.Message({
+       data: message
+      });
+      talker.publish(rosMessage);
+    };
+    sendMessage('teleop');
+
+    const topicsClient = new ROSLIB.Service({
+      ros: rosConnection,
+      name: '/rosapi/topics',
+      serviceType: 'rosapi/Topics'
+  });
+
+  // Request topic list
+  const request = new ROSLIB.ServiceRequest();
+  topicsClient.callService(request, function(result) {
+      console.log('Topics:', result.topics);
+  });
+  
       
     const MoveRobot = (data) => {
         var twist = new ROSLIB.Message({
@@ -48,7 +77,7 @@ export default function TeleopScreen({route}){
             <Image resizeMode = "contain" blurRadius = {70} style={{position:'absolute', flex: 1, paddingTop: 60}}
           source={require('../assets/Appbackground.png')}/>
             <WebView
-                    source={{ uri: `http://${data}:8080/stream_viewer?topic=/image_view/output&type=mjpeg&width=350&height=200` }}
+                    source={{ uri: `http://${data}:8080/stream_viewer?topic=/camera/color/image_raw&type=mjpeg&width=350&height=200` }}
                     style={{ width: windowWidth + 200, height: 240 }}
                   />
             <View>

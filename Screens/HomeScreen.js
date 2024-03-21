@@ -1,7 +1,7 @@
   import {StyleSheet, View, ActivityIndicator, ScrollView, 
     StatusBar, Alert, Pressable, Text, Image, ImageBackground, 
     Button, Modal, FlatList, TextInput, RefreshControl, Switch, Dimensions, TouchableOpacity} from 'react-native'
-  import {useEffect, useState, React, useLayoutEffect, route, useCallback} from 'react'
+  import {useEffect, useState, React, useLayoutEffect, route, useCallback, useRef} from 'react'
   import {debounce} from 'lodash';
   import axios from 'axios';
   import { SafeAreaView } from 'react-native';
@@ -37,46 +37,63 @@ export default function HomeScreen ({navigation}){
       
       const data = route.params?.data || '';
     
-  
-      let ros = null;
+
+      const ros = useRef(null);
+      const location = useRef(null);
+
   
     // Function to handle closing ROS connection
     const closeRosConnection = () => {
-      if (ros && ros.isConnected) {
-        ros.close();
+      if (ros.current && ros.current.isConnected) {
+        ros.current.close();
         setConnection(true);
         console.log('ROS connection closed');
       } else {
         console.log('No active ROS connection to close');
       }
     };
+    
       
-    //const Rosconnection = async () =>{
-      useEffect(() => {
+    useEffect(() => {
+        getHourlyWeather(apiKey, 1);
         setRefreshing(true);
-        if (ros && ros.isConnected) ros.close();
+        if (ros.current && ros.current.isConnected) ros.current.close();
   
-        ros = new ROSLIB.Ros({
+        ros.current = new ROSLIB.Ros({
           url : `ws://${data}:9090`
         });
         //Globals.ros = ros;
       
-        ros.on('connection', function() {
+        ros.current.on('connection', function() {
           console.log('Connected to Rosbridge server.');
-          setRosConnection(ros);
+          setRosConnection(ros.current);
           setrobotStatus("online");
           setstatusColor('limegreen');
           setConnection(false);
+          var talker = new ROSLIB.Topic({
+            ros : ros.current,
+            name : '/chatter',
+            messageType : 'std_msgs/String'
+          });
+          
+          const sendMessage = (message) => {
+            const rosMessage = new ROSLIB.Message({
+             data: message
+            });
+            talker.publish(rosMessage);
+          };
+          location_(ros.current);
+          sendMessage('home');
         });
       
-        ros.on('error', function(error) {
+        ros.current.on('error', function(error) {
           console.log('Error connecting to websocket server: ', error);
           setrobotStatus("error connecting to robot");
           setstatusColor('red');
           setConnection(true);
         });
       
-        ros.on('close', function() {
+        ros.current.on('close', function() {
           console.log('Connection to websocket server closed.');
           setrobotStatus("Ofline");
           setstatusColor('red');
@@ -92,12 +109,28 @@ export default function HomeScreen ({navigation}){
           closeRosConnection();
         };
       }, []); 
-      
+    
+      const location_ = (ros) => {
+        location.current = new ROSLIB.Topic({
+          ros : ros,
+          name : '/user_location',
+          messageType : 'std_msgs/String'
+        });
+      };
+           
       const handleLocation = (loc) => {
         setlocationSelected(true);
         setLocations([]);
         setPlaceholderText("Search a City");
         console.log(loc.name);
+        
+        
+        const location_msg = new ROSLIB.Message({
+          data: loc.name,
+        });
+        
+        location.current.publish(location_msg);  
+        
         storeData('city', loc.name);
         getHourlyWeather( apiKey, 1);
       }
@@ -109,11 +142,9 @@ export default function HomeScreen ({navigation}){
         setSearch(true);
         if (loc.length > 2){
           try {
-            const response = await axios.get(`${searchUrl}?key=${process.env.EXPO_PUBLIC_WEATHER_API_KEY}&q=${loc}`);
+            const response = await axios.get(`${searchUrl}?key=${apiKey}&q=${loc}`);
             const city = await response.data;
             setLocations(city);
-          
-            //console.log(city[1].name + city[1].country);
           } catch (error) {
             console.error('Error fetching location data:', error);
             throw error;
@@ -131,7 +162,7 @@ export default function HomeScreen ({navigation}){
         let cityName = 'oshawa';
         if (myCity) cityName = myCity;
         try {
-          const response = await axios.get(`${apiUrl}?key=${process.env.EXPO_PUBLIC_WEATHER_API_KEY}&q=${cityName}&days=${days}&aqi=no&alerts=no`);
+          const response = await axios.get(`${apiUrl}?key=${apiKey}&q=${cityName}&days=${days}&aqi=no&alerts=no`);
           console.log("got data successfully!")
           const Data = await response.data;
           setWeatherData(Data);
@@ -143,10 +174,7 @@ export default function HomeScreen ({navigation}){
           setLoading(false);
         }
       };
-      useEffect(()=>{
-        getHourlyWeather(apiKey, 1);
-        //Rosconnection();
-      }, []);
+      
       
       const hourlyTemperature = weatherData?.forecast?.forecastday[0]?.hour
         .filter((hourData) => new Date(hourData.time).getTime() >= currentTime.getTime())
@@ -170,11 +198,9 @@ export default function HomeScreen ({navigation}){
             </View>
           );
         });
-    
+    //refreshControl={<RefreshControl refreshing={refreshing} onRefresh={Rosconnection}/>}
       return(
-        <ScrollView contentContainerStyle = {{flexGrow: 1}} style={styles.container} 
-        //refreshControl={<RefreshControl refreshing={refreshing} onRefresh={Rosconnection}/>}
-         > 
+        <ScrollView contentContainerStyle = {{flexGrow: 1}} style={styles.container} > 
           <Image resizeMode = "contain" blurRadius = {70} style={{position:'absolute', flex: 1}}
           source={require('../assets/Appbackground.png')}/>
             <View style={{alignItems:'flex-end', flexDirection: 'row', justifyContent: 'space-between', marginLeft: 6, marginTop: 60}}>
@@ -267,7 +293,7 @@ export default function HomeScreen ({navigation}){
     
     const styles = StyleSheet.create({
       container: {
-        flexGrow: 1,
+        //flex: 1,
         //paddingTop: 60,
       }, 
       forecastContainer: {
