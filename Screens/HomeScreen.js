@@ -8,7 +8,7 @@
   import ROSLIB from 'roslib';
   import {WebView} from 'react-native-webview'
   import { StackRouter } from '@react-navigation/native';
-  import { useRoute } from '@react-navigation/native';  
+  import { useRoute , useFocusEffect} from '@react-navigation/native';  
   import { storeData, getData } from '../Utils/asyncStorage';
 
     
@@ -40,6 +40,7 @@ export default function HomeScreen ({navigation}){
 
       const ros = useRef(null);
       const location = useRef(null);
+      const talker = useRef(null);
 
   
     // Function to handle closing ROS connection
@@ -70,20 +71,19 @@ export default function HomeScreen ({navigation}){
           setrobotStatus("online");
           setstatusColor('limegreen');
           setConnection(false);
-          var talker = new ROSLIB.Topic({
-            ros : ros.current,
-            name : '/chatter',
-            messageType : 'std_msgs/String'
-          });
+          
           
           const sendMessage = (message) => {
-            const rosMessage = new ROSLIB.Message({
-             data: message
-            });
-            talker.publish(rosMessage);
+            
           };
+          screen(ros.current);
           location_(ros.current);
-          sendMessage('home');
+          const rosMessage = new ROSLIB.Message({
+            data: 'home'
+          });
+          talker.current?.publish(rosMessage);
+          console.log("on focus");
+          //sendMessage('home');
         });
       
         ros.current.on('error', function(error) {
@@ -109,7 +109,24 @@ export default function HomeScreen ({navigation}){
           closeRosConnection();
         };
       }, []); 
-    
+      const screen = (ros) => {
+        talker.current = new ROSLIB.Topic({
+          ros : ros,
+          name : '/chatter',
+          messageType : 'std_msgs/String'
+        });
+      };
+      
+      useFocusEffect(useCallback(() => {
+        const rosMessage = new ROSLIB.Message({
+          data: 'home'
+        });
+        talker.current?.publish(rosMessage);
+        console.log("on focus");
+      }, []));
+       
+      
+      
       const location_ = (ros) => {
         location.current = new ROSLIB.Topic({
           ros : ros,
@@ -207,8 +224,10 @@ export default function HomeScreen ({navigation}){
               <View style={[styles.forecastItems, {paddingBottom: 6, width: 150, marginBottom:6}]}>
                   <Text style={{fontSize: 15, color: statusColor}}>Robot Status: {robotStatus}, On charge</Text>
                 </View>
-                <View style={[styles.forecastItems, {marginBottom: 6, alignSelf:'flex-end'}]}>
-                  <Text style={{fontSize: 15, color: 'white', backgroundColor:'green'}}>Robot Battery: 90%</Text>
+                <View style={[styles.forecastItems, {marginBottom: 6, position: 'relative', height: 45,  paddingBottom: 0}]}>
+                  <View style={[styles.coloredArea, { width: '70%' }]} />
+                    <Text style={{fontSize: 13, color: 'white', textAlignVertical: 'center'}}>Robot Battery: 90%</Text>
+                  
                 </View>
   
             </View>
@@ -249,7 +268,9 @@ export default function HomeScreen ({navigation}){
             
             
             {isLoading ? (
-              <Text>Loading...</Text>
+              <View style={{alignContent: 'center', alignItems: 'center', marginTop: 10}}>
+                <ActivityIndicator size={75} color="#0000ff" />
+              </View>
                 ) : (
               <View style={{alignContent: 'center', alignItems: 'center', marginTop: 10}}>
                 <Text style={{fontSize: 30, fontWeight: 'bold', color: 'white', marginRight: 5, textTransform: 'uppercase'}}> {weatherData?.location?.name}, {weatherData?.location?.country}</Text>
@@ -311,12 +332,21 @@ export default function HomeScreen ({navigation}){
         width: 60,
         height: 60,
       },
+      coloredArea: {
+        //height: '100%', // Match parent height
+        position: 'absolute', // Position the colored area absolutely
+        top: 0, // Align the colored area with the top edge of the container
+        left: 0, // Start the colored area from the left edge of the container
+        height: 41, // Match parent height
+        backgroundColor: 'green', // Color of the colored area
+        borderRadius: 8
+
+      },
       forecastItems: {
         justifyContent: 'center',
         alignItems: 'center',
         alignContent: 'center',
         borderColor: 'rgba(255,255,255,0.5)',
-        borderRadius: 16,
         borderWidth: 2,
         width: 110,
         borderRadius: 10,
@@ -324,6 +354,7 @@ export default function HomeScreen ({navigation}){
         marginTop: 1,
         marginRight: 6,
         backgroundColor: 'rgba(0,0,0,0.15)',
+        position: 'relative',
       },
       searchBox:{
         backgroundColor: 'rgba(255,255,255,0.15)',
