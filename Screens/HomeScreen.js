@@ -13,6 +13,9 @@
 
     
   const apiKey = process.env.EXPO_PUBLIC_WEATHER_API_KEY;
+  const client_id = process.env.EXPO_PUBLIC_CLIENT_ID;
+  const client_secret = process.env.EXPO_PUBLIC_CLIENT_SECRET;
+  const thing_id = process.env.EXPO_PUBLIC_THING_ID;
   const apiUrl = 'https://api.weatherapi.com/v1/forecast.json';
   const searchUrl = 'https://api.weatherapi.com/v1/search.json';
   
@@ -34,13 +37,58 @@ export default function HomeScreen ({navigation}){
       const route = useRoute();
       const [placeholderText, setPlaceholderText] = useState('Search a City');
       const [locationSelected, setlocationSelected] = useState(false);
+      const [batteryPercent, setbatteryPercent] = useState(70);
       
       const data = route.params?.data || '';
-    
+      const [accessToken, setAccessToken] = useState('');
+    const [properties, setProperties] = useState([]);
+
+    useEffect(() => {
+      const getToken = async () => {
+        try {
+          const response = await axios.post(
+            'https://api2.arduino.cc/iot/v1/clients/token',
+            {
+              grant_type: 'client_credentials',
+              client_id: client_id,
+              client_secret: client_secret,
+              audience: 'https://api2.arduino.cc/iot'
+            },
+            {
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+            }
+          );
+          setAccessToken(response.data.access_token);
+        } catch (error) {
+          console.error('Failed getting an access token: ' + error);
+        }
+      };
+  
+      const listProperties = async () => {
+        try {
+          const response = await axios.get(`https://api2.arduino.cc/iot/v2/things/${thing_id}/properties`, {
+            headers: {
+              Authorization: `Bearer ${accessToken}`
+            },
+            params: {
+              showDeleted: true
+            }
+          });
+          setbatteryPercent(response.data[1].last_value);
+          console.log(batteryPercent);
+        } catch (error) {
+          console.error('Failed to fetch properties: ' + error);
+        }
+      };
+  
+      getToken();
+      listProperties();
+    }, [accessToken]);
 
       const ros = useRef(null);
       const location = useRef(null);
       const talker = useRef(null);
+      let battery = useRef(null);
 
   
     // Function to handle closing ROS connection
@@ -78,6 +126,7 @@ export default function HomeScreen ({navigation}){
           };
           screen(ros.current);
           location_(ros.current);
+          battery_(ros.current);
           const rosMessage = new ROSLIB.Message({
             data: 'home'
           });
@@ -99,6 +148,17 @@ export default function HomeScreen ({navigation}){
           setstatusColor('red');
           setConnection(true);
         });
+
+        battery = new ROSLIB.Topic({
+          ros : ros.current,
+          name : '/robot/battery',
+          messageType : 'std_msgs/Int32'
+        });
+
+        battery.current?.subscribe(function (data)  {
+          console.log(data.data);
+          setbatteryPercent(data.data);
+        });
     
         
           setTimeout(() => {
@@ -107,6 +167,7 @@ export default function HomeScreen ({navigation}){
       
         return () => {
           closeRosConnection();
+          battery.unsubscribe();
         };
       }, []); 
       const screen = (ros) => {
@@ -122,9 +183,15 @@ export default function HomeScreen ({navigation}){
           data: 'home'
         });
         talker.current?.publish(rosMessage);
-        console.log("on focus");
+        
       }, []));
-       
+
+      const battery_ =(ros) => {
+        
+      }
+      
+      
+      
       
       
       const location_ = (ros) => {
@@ -225,8 +292,8 @@ export default function HomeScreen ({navigation}){
                   <Text style={{fontSize: 15, color: statusColor}}>Robot Status: {robotStatus}, On charge</Text>
                 </View>
                 <View style={[styles.forecastItems, {marginBottom: 6, position: 'relative', height: 45,  paddingBottom: 0}]}>
-                  <View style={[styles.coloredArea, { width: '70%' }]} />
-                    <Text style={{fontSize: 13, color: 'white', textAlignVertical: 'center'}}>Robot Battery: 90%</Text>
+                  <View style={[styles.coloredArea, { width: `${batteryPercent}%` }]} />
+                    <Text style={{fontSize: 13, color: 'white', textAlignVertical: 'center'}}>Robot Battery: {batteryPercent}%</Text>
                   
                 </View>
   

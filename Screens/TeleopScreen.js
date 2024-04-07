@@ -19,10 +19,10 @@ export default function TeleopScreen({route}){
     useEffect(() => { 
       const timer = setTimeout(() => { 
        setRendered(true); 
-      }, 1500); 
+      }, 5000); 
  
       return () => clearTimeout(timer);
-    }, []); 
+    }, [rendered, isMapping, isPath]); 
 
     var talker = new ROSLIB.Topic({
       ros : rosConnection,
@@ -110,14 +110,16 @@ export default function TeleopScreen({route}){
         setIsMapping(!isMapping);
         if (isMapping) {
           const rosMessage = new ROSLIB.Message({
-            data: 'save_map'
+            data: 'done_mapping'
            });
            talker.publish(rosMessage);
+           setRendered(false);
         } else {
           const rosMessage = new ROSLIB.Message({
             data: 'mapping'
            });
            talker.publish(rosMessage);
+           setRendered(false);
         }
       };
 
