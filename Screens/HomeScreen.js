@@ -85,10 +85,9 @@ export default function HomeScreen ({navigation}){
       listProperties();
     }, [accessToken]);
 
-      const ros = useRef(null);
-      const location = useRef(null);
-      const talker = useRef(null);
-      let battery = useRef(null);
+    const ros = useRef(null);
+    const location = useRef(null);
+    const talker = useRef(null);
 
   
     // Function to handle closing ROS connection
@@ -120,13 +119,8 @@ export default function HomeScreen ({navigation}){
           setstatusColor('limegreen');
           setConnection(false);
           
-          
-          const sendMessage = (message) => {
-            
-          };
           screen(ros.current);
           location_(ros.current);
-          battery_(ros.current);
           const rosMessage = new ROSLIB.Message({
             data: 'home'
           });
@@ -149,17 +143,7 @@ export default function HomeScreen ({navigation}){
           setConnection(true);
         });
 
-        battery = new ROSLIB.Topic({
-          ros : ros.current,
-          name : '/robot/battery',
-          messageType : 'std_msgs/Int32'
-        });
-
-        battery.current?.subscribe(function (data)  {
-          console.log(data.data);
-          setbatteryPercent(data.data);
-        });
-    
+      
         
           setTimeout(() => {
           setRefreshing(false);
@@ -167,7 +151,6 @@ export default function HomeScreen ({navigation}){
       
         return () => {
           closeRosConnection();
-          battery.unsubscribe();
         };
       }, []); 
       const screen = (ros) => {
@@ -186,9 +169,6 @@ export default function HomeScreen ({navigation}){
         
       }, []));
 
-      const battery_ =(ros) => {
-        
-      }
       
       
       
