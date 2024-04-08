@@ -38,6 +38,7 @@ export default function HomeScreen ({navigation}){
       const [placeholderText, setPlaceholderText] = useState('Search a City');
       const [locationSelected, setlocationSelected] = useState(false);
       const [batteryPercent, setbatteryPercent] = useState(70);
+      const [isAutoEnabled, setIsAutoEnabled] = useState(false);
       
       const data = route.params?.data || '';
       const [accessToken, setAccessToken] = useState('');
@@ -89,6 +90,7 @@ export default function HomeScreen ({navigation}){
     const location = useRef(null);
     const talker = useRef(null);
 
+    
   
     // Function to handle closing ROS connection
     const closeRosConnection = () => {
@@ -159,6 +161,20 @@ export default function HomeScreen ({navigation}){
           name : '/chatter',
           messageType : 'std_msgs/String'
         });
+      };
+      const toggleSwitch = () => {
+        setIsAutoEnabled(previousState => !previousState);
+        if (isAutoEnabled == true){
+          const rosMessage = new ROSLIB.Message({
+            data: 'done_auto'
+          });
+          talker.current?.publish(rosMessage);
+        } else {
+          const rosMessage = new ROSLIB.Message({
+            data: 'auto'
+          });
+          talker.current?.publish(rosMessage);
+        }
       };
       
       useFocusEffect(useCallback(() => {
@@ -344,7 +360,7 @@ export default function HomeScreen ({navigation}){
                     <Text style={{color: 'white', textAlign: 'center', fontWeight:'bold', fontSize: 16, paddingTop: 6}}>Teleoperation</Text>
                   </TouchableOpacity>
                   <Text style={{color: 'white', textAlign: 'center', fontWeight:'bold', fontSize: 16, marginTop: 2}}> Automatic Mode: </Text>
-                  <Switch/>
+                  <Switch onValueChange={toggleSwitch} value={isAutoEnabled}/>
                 </View>
                 <TouchableOpacity
                   title= "Logout" style={{backgroundColor: 'rgba(20,53,239,0.75)',  
