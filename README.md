@@ -12,14 +12,14 @@ For those interested in delving deeper into the technical aspects, the ROS code 
 # App usage
 #### 
 - The first step in operating the app is starting the bringup launch file found in [IoT Snow Removal ROS Code](https://github.com/Maaz-Sidd/IoT-snow-Removal-ROS). Make sure the laptop or mini PC is connected to arduino via USB for teleoperation. The next step is getting the robot's IP by executing ifconfig in the Linux terminal. This IP along with the username (John) and password (1234) will allow you to sign in. 
-- If the connection to the robot is successful the APP will show robot's status online and the teleoperation page will be accessible.
-- The robot can be controlled using the on-screen joystick on the teleoperation page.
-- The chute angle and auger for snow removal can be controlled using the slider and button at the bottom of the teleoperation page.
-- Mapping nodes can be launched from the app by pressing the mapping button, this is done by a backend ROSpython script connected to the app.
-- After mapping is complete, the user can click stop mapping and the map will be saved on the robot PC.
-- The user can then set the path using the path button and teleoperating the robot along the optimal path.
-- After the path is saved robot will launch autonomous navigation based on weather and battery information.
-- Autonomous navigation can be triggered for testing using the switch on the main page labeled: Autonomous mode.
+- Upon successful connection to the robot, the app will indicate the robot's online status and the teleoperation page will become accessible.
+- Control the robot using the on-screen joystick provided on the teleoperation page.
+- Adjust the chute angle and operate the auger for snow removal using the slider and button located at the bottom of the teleoperation page.
+- Launch mapping nodes directly from the app by pressing the mapping button, facilitated by a backend ROS Python script connected to the app.
+- Once mapping is completed, stop mapping to save the map on the robot PC.
+- Set the desired path by clicking the path button and teleoperate the robot along the optimized path.
+- After saving the path, the robot will initiate autonomous navigation based on weather and battery information.
+- For testing purposes, trigger autonomous navigation using the switch labeled "Autonomous mode" on the main page.
 
 
 # App demo
